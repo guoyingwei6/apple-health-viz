@@ -89,6 +89,8 @@ App.jsx 更新 state → 各 section 组件读取对应切片渲染图表
   restingHeartRate: [{ date, value }],
   hrv: [{ date, value }],
   heartRateRecovery: [{ date, value }],
+  // sleep: 仅聚合 Asleep 系列类型（AsleepCore / AsleepDeep / AsleepREM / Asleep），
+  // 排除 InBed；按"当日中午12点前结束的睡眠归属前一天"规则聚合为每日一条
   sleep: [{ date, durationHours, isShort }],  // isShort: < 6h
   steps: [{ date, value }],
   activeEnergy: [{ date, value }],
@@ -150,7 +152,8 @@ App.jsx 更新 state → 各 section 组件读取对应切片渲染图表
 | HRV | >45 ms | 30-45 ms | <30 ms |
 | 睡眠 | 均值≥7h，<6h天数<15% | 均值6-7h 或 <6h天数15-30% | 均值<6h 或 <6h天数>30% |
 | 步数 | 日均≥8000 | 日均5000-8000 | 日均<5000 |
-| VO2Max | 按年龄性别分级（Apple 标准） | — | — |
+| VO2Max（男） | 年龄18-29:≥44 / 30-39:≥42 / 40-49:≥39 / 50+:≥36 | 低于优秀5以内 | 低于参考值5以上 |
+| VO2Max（女） | 年龄18-29:≥40 / 30-39:≥38 / 40-49:≥35 / 50+:≥32 | 低于优秀5以内 | 低于参考值5以上 |
 | BMI | 18.5-24.9 | 25-29.9 或 17-18.5 | ≥30 或 <17 |
 
 ---
@@ -172,6 +175,7 @@ App.jsx 更新 state → 各 section 组件读取对应切片渲染图表
 | zip 内无 export.xml | 解析后提示"未找到健康数据文件" |
 | 某模块数据为空 | 该 section 显示"暂无数据"占位，不影响其他模块 |
 | 解析耗时过长 | 进度条 + 取消按钮，取消后恢复上传状态 |
+| 步数热力图数据不足90天 | 按实际天数渲染，不足部分留空格（灰色），不隐藏热力图组件 |
 
 ---
 
