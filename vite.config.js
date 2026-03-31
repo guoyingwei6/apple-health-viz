@@ -8,6 +8,7 @@ export default defineConfig({
     format: 'es',
   },
   test: {
+    globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.js'],
   },
