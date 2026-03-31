@@ -28,8 +28,9 @@ describe('monthlyAvg', () => {
 })
 
 describe('rateRestingHR', () => {
-  it('returns ok for 50-65', () => expect(rateRestingHR(60)).toBe('ok'))
-  it('returns warn for 65-75', () => expect(rateRestingHR(70)).toBe('warn'))
+  it('returns ok for 60', () => expect(rateRestingHR(60)).toBe('ok'))
+  it('returns warn for boundary 65', () => expect(rateRestingHR(65)).toBe('warn'))
+  it('returns warn for 70', () => expect(rateRestingHR(70)).toBe('warn'))
   it('returns bad for >75', () => expect(rateRestingHR(80)).toBe('bad'))
   it('returns bad for <45', () => expect(rateRestingHR(40)).toBe('bad'))
 })

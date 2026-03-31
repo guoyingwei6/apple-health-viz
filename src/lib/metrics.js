@@ -93,11 +93,7 @@ export function aggregateSleepByDay(rawSleepRecords) {
     const endLocalHour = end.localHour
     let dateKey = end.localDateStr
     if (endLocalHour < 12) {
-      const prev = new Date(end.utcMs - endLocalHour * 3600000 - 60000)
-      // 取前一天日期：从 localDateStr 减一天
-      const d = new Date(end.utcMs)
-      d.setUTCDate(d.getUTCDate() - 1)
-      // 更准确：基于 localDateStr 计算前一天
+      // 基于 localDateStr 计算前一天
       const [y, m, day] = dateKey.split('-').map(Number)
       const prevDate = new Date(Date.UTC(y, m - 1, day - 1))
       dateKey = prevDate.toISOString().slice(0, 10)
@@ -112,8 +108,8 @@ export function aggregateSleepByDay(rawSleepRecords) {
 }
 
 export function rateRestingHR(bpm) {
-  if (bpm >= 50 && bpm <= 65) return 'ok'
-  if ((bpm > 65 && bpm <= 75) || (bpm >= 45 && bpm < 50)) return 'warn'
+  if (bpm >= 50 && bpm < 65) return 'ok'
+  if ((bpm >= 65 && bpm <= 75) || (bpm >= 45 && bpm < 50)) return 'warn'
   return 'bad'
 }
 
