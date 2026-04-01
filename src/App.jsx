@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback } from 'react'
-import JSZip from 'jszip'
 import UploadZone from './components/UploadZone'
 import ProgressBar from './components/ProgressBar'
 import UserProfile from './components/UserProfile'
@@ -17,19 +16,16 @@ export default function App() {
     setParseError('')
     setPhase('parsing')
     try {
-      const zip = await JSZip.loadAsync(file)
-      const xmlFile = zip.file('apple_health_export/export.xml') ?? zip.file('export.xml')
-      if (!xmlFile) {
-        setParseError('未找到健康数据文件（export.xml），请确认上传了正确的导出文件。')
-        setPhase('upload')
-        return
-      }
-      const text = await xmlFile.async('text')
+      const buffer = await file.arrayBuffer()
       const worker = new Worker(new URL('./workers/parser.worker.js', import.meta.url), { type: 'module' })
       workerRef.current = worker
       worker.onmessage = ({ data }) => {
         if (data.type === 'progress') {
           setProgress({ processed: data.processed, total: data.total })
+        } else if (data.type === 'error') {
+          worker.terminate()
+          setParseError(data.message || '解析出错，请重试。')
+          setPhase('upload')
         } else if (data.type === 'done') {
           worker.terminate()
           setHealthData(data.payload)
@@ -40,7 +36,7 @@ export default function App() {
         setParseError('解析出错：' + e.message)
         setPhase('upload')
       }
-      worker.postMessage({ text })
+      worker.postMessage({ buffer }, [buffer])
     } catch (e) {
       setParseError('文件读取失败：' + e.message)
       setPhase('upload')

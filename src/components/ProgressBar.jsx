@@ -14,7 +14,7 @@ export default function ProgressBar({ processed, total, onCancel }) {
       </div>
       <div className="flex justify-between items-center mt-2">
         <span className="text-slate-500 text-xs">
-          已处理 {processed.toLocaleString()} / {total.toLocaleString()} 行
+          已处理 {(processed / 1048576).toFixed(1)} / {(total / 1048576).toFixed(1)} MB
         </span>
         <button
           onClick={onCancel}
