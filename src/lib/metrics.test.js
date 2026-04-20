@@ -12,6 +12,8 @@ import {
   aggregateSleepByDay,
   aggregateStepsByDay,
   aggregateMonthly,
+  filterHealthDataBySources,
+  buildExportBundle,
 } from './metrics'
 
 describe('monthlyAvg', () => {
@@ -92,5 +94,63 @@ describe('aggregateSleepByDay', () => {
     // main sleep ends 07:00 Jan 11, 归属 Jan 10
     expect(result['2025-01-10'].durationHours).toBeCloseTo(8)
     expect(result['2025-01-11']).toBeUndefined()
+  })
+})
+
+describe('filterHealthDataBySources', () => {
+  it('filters quantity records by source and recomputes sleep from selected raw sleep records', () => {
+    const data = {
+      steps: [
+        { date: '2025-01-10', value: 1000, sourceName: 'iPhone' },
+        { date: '2025-01-10', value: 2000, sourceName: 'Third Party' },
+      ],
+      restingHeartRate: [
+        { date: '2025-01-10', value: 60, sourceName: 'Apple Watch' },
+        { date: '2025-01-10', value: 75, sourceName: 'Third Party' },
+      ],
+      sleepRaw: [
+        { startDate: '2025-01-10 23:00:00 +0800', endDate: '2025-01-11 07:00:00 +0800', value: 'HKCategoryValueSleepAnalysisAsleepCore', sourceName: 'Apple Watch' },
+        { startDate: '2025-01-11 23:00:00 +0800', endDate: '2025-01-12 07:00:00 +0800', value: 'HKCategoryValueSleepAnalysisAsleepCore', sourceName: 'Third Party' },
+      ],
+      sleep: [],
+      sources: ['Apple Watch', 'iPhone', 'Third Party'],
+      meta: { totalRecords: 4 },
+    }
+
+    const filtered = filterHealthDataBySources(data, ['Apple Watch', 'iPhone'])
+
+    expect(filtered.steps).toEqual([{ date: '2025-01-10', value: 1000, sourceName: 'iPhone' }])
+    expect(filtered.restingHeartRate).toEqual([{ date: '2025-01-10', value: 60, sourceName: 'Apple Watch' }])
+    expect(filtered.sleep).toEqual([{ date: '2025-01-10', durationHours: 8, isShort: false }])
+    expect(filtered.meta.selectedSources).toEqual(['Apple Watch', 'iPhone'])
+  })
+})
+
+describe('buildExportBundle', () => {
+  it('creates cleaned daily, monthly, and rating payloads for export', () => {
+    const data = {
+      restingHeartRate: [{ date: '2025-01-10', value: 60 }],
+      hrv: [{ date: '2025-01-10', value: 50 }],
+      sleep: [{ date: '2025-01-10', durationHours: 8, isShort: false }],
+      steps: [{ date: '2025-01-10', value: 9000 }],
+      vo2max: [{ date: '2025-01-10', value: 45 }],
+      bmi: [{ date: '2025-01-10', value: 22 }],
+      bodyMass: [],
+      bodyFat: [],
+      meta: { dateRange: { start: '2025-01-10', end: '2025-01-10' }, selectedSources: ['Apple Watch'] },
+    }
+
+    const bundle = buildExportBundle(data, { sex: 'male', age: 35 })
+
+    expect(bundle.summary.ratings).toMatchObject({
+      restingHeartRate: 'ok',
+      hrv: 'ok',
+      sleep: 'ok',
+      steps: 'ok',
+      vo2max: 'ok',
+      bmi: 'ok',
+    })
+    expect(bundle.daily.steps).toEqual([{ date: '2025-01-10', steps: 9000 }])
+    expect(bundle.monthly.restingHeartRate).toEqual([{ month: '2025-01', avg: 60 }])
   })
 })

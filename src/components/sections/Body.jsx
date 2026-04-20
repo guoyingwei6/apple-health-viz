@@ -1,6 +1,8 @@
 import ReactECharts from 'echarts-for-react'
 import { lineChartOption, COLORS } from '../../lib/chartOptions'
+import { buildSectionAdvice } from '../../lib/advice'
 import { EmptyState, SectionCard } from './_empty'
+import AdviceCard from '../AdviceCard'
 
 function toMonthly(records) {
   const buckets = {}
@@ -16,14 +18,22 @@ function toMonthly(records) {
 
 export default function Body({ data, profile }) {
   const massMonthly = toMonthly(data.bodyMass)
+  const leanMassMonthly = toMonthly(data.leanBodyMass)
   const bmiMonthly = toMonthly(data.bmi)
   const fatMonthly = toMonthly(data.bodyFat.map(r => ({ ...r, value: r.value * 100 })))
+  const advice = buildSectionAdvice('body', data, profile)
 
   return (
     <div>
+      <AdviceCard advice={advice} />
       <SectionCard title="体重趋势 (kg)">
         {massMonthly.length === 0 ? <EmptyState label="体重" /> :
           <ReactECharts option={lineChartOption({ data: massMonthly, color: COLORS.hrPink })} style={{ height: 200 }} />
+        }
+      </SectionCard>
+      <SectionCard title="瘦体重趋势 (kg)">
+        {leanMassMonthly.length === 0 ? <EmptyState label="瘦体重" /> :
+          <ReactECharts option={lineChartOption({ data: leanMassMonthly, color: COLORS.fitnessGreen })} style={{ height: 180 }} />
         }
       </SectionCard>
       <div className="grid md:grid-cols-2 gap-4">

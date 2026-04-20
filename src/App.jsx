@@ -1,13 +1,16 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 import UploadZone from './components/UploadZone'
 import ProgressBar from './components/ProgressBar'
 import UserProfile from './components/UserProfile'
 import Dashboard from './components/Dashboard'
+import SourceSelector from './components/SourceSelector'
+import { filterHealthDataBySources } from './lib/metrics'
 
 export default function App() {
   const [phase, setPhase] = useState('upload')
   const [progress, setProgress] = useState({ processed: 0, total: 0 })
-  const [healthData, setHealthData] = useState(null)
+  const [rawHealthData, setRawHealthData] = useState(null)
+  const [selectedSources, setSelectedSources] = useState([])
   const [profile, setProfile] = useState({ sex: '', age: '' })
   const [parseError, setParseError] = useState('')
   const workerRef = useRef(null)
@@ -28,8 +31,9 @@ export default function App() {
           setPhase('upload')
         } else if (data.type === 'done') {
           worker.terminate()
-          setHealthData(data.payload)
-          setPhase('dashboard')
+          setRawHealthData(data.payload)
+          setSelectedSources([])
+          setPhase('sources')
         }
       }
       worker.onerror = (e) => {
@@ -50,10 +54,21 @@ export default function App() {
   }, [])
 
   const handleReset = useCallback(() => {
-    setHealthData(null)
+    setRawHealthData(null)
+    setSelectedSources([])
     setPhase('upload')
     setProgress({ processed: 0, total: 0 })
   }, [])
+
+  const handleSourceConfirm = useCallback((sources) => {
+    setSelectedSources(sources)
+    setPhase('dashboard')
+  }, [])
+
+  const healthData = useMemo(() => {
+    if (!rawHealthData || phase !== 'dashboard') return null
+    return filterHealthDataBySources(rawHealthData, selectedSources)
+  }, [rawHealthData, selectedSources, phase])
 
   return (
     <div className="min-h-screen bg-bg text-slate-100">
@@ -76,6 +91,10 @@ export default function App() {
         <div className="max-w-lg mx-auto pt-32 px-4">
           <ProgressBar processed={progress.processed} total={progress.total} onCancel={handleCancel} />
         </div>
+      )}
+
+      {phase === 'sources' && rawHealthData && (
+        <SourceSelector data={rawHealthData} onConfirm={handleSourceConfirm} onReset={handleReset} />
       )}
 
       {phase === 'dashboard' && healthData && (

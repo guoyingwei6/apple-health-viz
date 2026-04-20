@@ -5,6 +5,43 @@ const VO2MAX_THRESHOLDS = {
   female: [{ maxAge: 29, ok: 40 }, { maxAge: 39, ok: 38 }, { maxAge: 49, ok: 35 }, { maxAge: 200, ok: 32 }],
 }
 
+export const SERIES_KEYS = [
+  'heartRate',
+  'restingHeartRate',
+  'hrv',
+  'heartRateRecovery',
+  'steps',
+  'activeEnergy',
+  'basalEnergy',
+  'standTime',
+  'distanceWalkingRunning',
+  'distanceCycling',
+  'distanceSwimming',
+  'flightsClimbed',
+  'vo2max',
+  'sixMinuteWalk',
+  'walkingSteadiness',
+  'bodyMass',
+  'bmi',
+  'bodyFat',
+  'leanBodyMass',
+  'respiratoryRate',
+  'oxygenSaturation',
+  'bloodPressureSystolic',
+  'bloodPressureDiastolic',
+  'bodyTemperature',
+  'walkingHR',
+  'runningPower',
+  'runningSpeed',
+  'runningStrideLength',
+  'runningVerticalOscillation',
+  'runningGroundContactTime',
+  'cyclingPower',
+  'cyclingCadence',
+  'cyclingSpeed',
+  'swimmingStrokeCount',
+]
+
 function getVO2MaxThreshold(sex, age) {
   const table = VO2MAX_THRESHOLDS[sex]
   if (!table) return null
@@ -105,6 +142,119 @@ export function aggregateSleepByDay(rawSleepRecords) {
     d.isShort = d.durationHours < 6
   }
   return byDay
+}
+
+export function defaultSelectedSources(sources = []) {
+  const preferred = sources.filter(source =>
+    /apple watch|iphone/i.test(source)
+  )
+  return preferred.length ? preferred : sources
+}
+
+export function filterHealthDataBySources(data, selectedSources) {
+  const selected = new Set(selectedSources)
+  const includeAll = selected.size === 0
+  const filtered = {
+    ...data,
+    meta: {
+      ...(data.meta ?? {}),
+      selectedSources: selectedSources ?? [],
+    },
+  }
+
+  for (const key of SERIES_KEYS) {
+    const records = data[key] ?? []
+    filtered[key] = includeAll
+      ? records
+      : records.filter(record => selected.has(record.sourceName))
+  }
+
+  const sleepRaw = includeAll
+    ? (data.sleepRaw ?? [])
+    : (data.sleepRaw ?? []).filter(record => selected.has(record.sourceName))
+  filtered.sleepRaw = sleepRaw
+  const sleepByDay = aggregateSleepByDay(sleepRaw)
+  filtered.sleep = Object.entries(sleepByDay)
+    .map(([date, d]) => ({ date, ...d }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+
+  return filtered
+}
+
+function avg(records) {
+  if (!records?.length) return null
+  return records.reduce((sum, record) => sum + record.value, 0) / records.length
+}
+
+function latest(records) {
+  if (!records?.length) return null
+  return records[records.length - 1].value
+}
+
+export function calculateRatings(data, profile) {
+  const avgRHR = avg(data.restingHeartRate)
+  const avgHRV = avg(data.hrv)
+  const sleepAvg = data.sleep?.length
+    ? data.sleep.reduce((sum, record) => sum + record.durationHours, 0) / data.sleep.length
+    : null
+  const shortPct = data.sleep?.length
+    ? data.sleep.filter(record => record.isShort).length / data.sleep.length
+    : 0
+  const stepVals = Object.values(aggregateStepsByDay(data.steps ?? []))
+  const avgSteps = stepVals.length
+    ? stepVals.reduce((sum, value) => sum + value, 0) / stepVals.length
+    : null
+  const latestVO2 = latest(data.vo2max)
+  const latestBMI = latest(data.bmi)
+
+  return {
+    restingHeartRate: avgRHR === null ? null : rateRestingHR(Math.round(avgRHR)),
+    hrv: avgHRV === null ? null : rateHRV(Math.round(avgHRV)),
+    sleep: sleepAvg === null ? null : rateSleep(sleepAvg, shortPct),
+    steps: avgSteps === null ? null : rateSteps(avgSteps),
+    vo2max: latestVO2 === null ? null : rateVO2Max(latestVO2, profile?.sex && profile?.age ? profile : null),
+    bmi: latestBMI === null ? null : rateBMI(latestBMI),
+  }
+}
+
+export function buildExportBundle(data, profile) {
+  const stepsByDay = aggregateStepsByDay(data.steps ?? [])
+  const ratings = calculateRatings(data, profile)
+  return {
+    summary: {
+      generatedAt: new Date().toISOString(),
+      dateRange: data.meta?.dateRange ?? { start: null, end: null },
+      selectedSources: data.meta?.selectedSources ?? data.sources ?? [],
+      ratings,
+    },
+    daily: {
+      steps: Object.entries(stepsByDay)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, steps]) => ({ date, steps })),
+      sleep: (data.sleep ?? []).map(record => ({
+        date: record.date,
+        durationHours: +record.durationHours.toFixed(2),
+        isShort: record.isShort,
+      })),
+    },
+    monthly: {
+      restingHeartRate: aggregateMonthly(data.restingHeartRate ?? []),
+      hrv: aggregateMonthly(data.hrv ?? []),
+      steps: aggregateMonthly(
+        Object.entries(stepsByDay).map(([date, value]) => ({ date, value }))
+      ),
+      sleep: aggregateMonthly((data.sleep ?? []).map(record => ({
+        date: record.date,
+        value: record.durationHours,
+      }))),
+      activeEnergy: aggregateMonthly(data.activeEnergy ?? []),
+      standTime: aggregateMonthly(data.standTime ?? []),
+      vo2max: aggregateMonthly(data.vo2max ?? []),
+      bmi: aggregateMonthly(data.bmi ?? []),
+      bodyMass: aggregateMonthly(data.bodyMass ?? []),
+      bodyFat: aggregateMonthly((data.bodyFat ?? []).map(record => ({ ...record, value: record.value * 100 }))),
+    },
+  }
 }
 
 export function rateRestingHR(bpm) {

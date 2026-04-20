@@ -1,11 +1,16 @@
 import ReactECharts from 'echarts-for-react'
 import { aggregateMonthly } from '../../lib/metrics'
+import { buildSectionAdvice } from '../../lib/advice'
 import { lineChartOption, COLORS } from '../../lib/chartOptions'
 import { EmptyState, SectionCard } from './_empty'
+import AdviceCard from '../AdviceCard'
 
 export default function HeartRate({ data }) {
   const rhrMonthly = aggregateMonthly(data.restingHeartRate)
   const hrvMonthly = aggregateMonthly(data.hrv)
+  const recoveryMonthly = aggregateMonthly(data.heartRateRecovery)
+  const walkingHRMonthly = aggregateMonthly(data.walkingHR)
+  const advice = buildSectionAdvice('heartrate', data)
 
   const hrValues = data.heartRate.map(r => r.value)
   const bins = Array.from({ length: 14 }, (_, i) => ({ range: 40 + i * 10, count: 0 }))
@@ -18,6 +23,7 @@ export default function HeartRate({ data }) {
 
   return (
     <div>
+      <AdviceCard advice={advice} />
       <div className="grid md:grid-cols-2 gap-4 mb-4">
         <SectionCard title="静息心率趋势（月均）">
           {rhrMonthly.length === 0 ? <EmptyState label="静息心率" /> :
@@ -53,6 +59,25 @@ export default function HeartRate({ data }) {
           </>
         )}
       </SectionCard>
+      <div className="grid md:grid-cols-2 gap-4">
+        <SectionCard title="心率恢复（一分钟）">
+          {recoveryMonthly.length === 0 ? <EmptyState label="心率恢复" /> :
+            <ReactECharts option={lineChartOption({
+              data: recoveryMonthly,
+              color: COLORS.fitnessGreen,
+              markLine: { value: 18, label: '18 bpm 参考', color: COLORS.warn },
+            })} style={{ height: 180 }} />
+          }
+        </SectionCard>
+        <SectionCard title="步行平均心率">
+          {walkingHRMonthly.length === 0 ? <EmptyState label="步行心率" /> :
+            <ReactECharts option={lineChartOption({
+              data: walkingHRMonthly,
+              color: COLORS.sleepOrange,
+            })} style={{ height: 180 }} />
+          }
+        </SectionCard>
+      </div>
     </div>
   )
 }

@@ -1,7 +1,9 @@
 import ReactECharts from 'echarts-for-react'
 import { aggregateMonthly } from '../../lib/metrics'
+import { buildSectionAdvice } from '../../lib/advice'
 import { lineChartOption, COLORS } from '../../lib/chartOptions'
 import { EmptyState, SectionCard } from './_empty'
+import AdviceCard from '../AdviceCard'
 
 export default function Sleep({ data }) {
   const sleepMonthly = aggregateMonthly(
@@ -10,9 +12,11 @@ export default function Sleep({ data }) {
   const shortDays = data.sleep.filter(r => r.isShort).length
   const shortPct = data.sleep.length ? (shortDays / data.sleep.length * 100).toFixed(0) : 0
   const recent = data.sleep.slice(-60)
+  const advice = buildSectionAdvice('sleep', data)
 
   return (
     <div>
+      <AdviceCard advice={advice} />
       <SectionCard title="每日睡眠时长（近60天）">
         {recent.length === 0 ? <EmptyState label="睡眠" /> :
           <ReactECharts option={{

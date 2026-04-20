@@ -1,7 +1,9 @@
 import ReactECharts from 'echarts-for-react'
 import { aggregateMonthly, rateVO2Max } from '../../lib/metrics'
+import { buildSectionAdvice } from '../../lib/advice'
 import { lineChartOption, COLORS, RATING_ICON, RATING_LABEL } from '../../lib/chartOptions'
 import { EmptyState, SectionCard } from './_empty'
+import AdviceCard from '../AdviceCard'
 
 export default function Fitness({ data, profile }) {
   const vo2Monthly = aggregateMonthly(data.vo2max)
@@ -14,9 +16,11 @@ export default function Fitness({ data, profile }) {
   const avgSteadiness = steadiness.length
     ? (steadiness.reduce((s, r) => s + r.value, 0) / steadiness.length * 100).toFixed(1)
     : null
+  const advice = buildSectionAdvice('fitness', data, profile)
 
   return (
     <div>
+      <AdviceCard advice={advice} />
       <SectionCard title="VO₂Max 最大摄氧量趋势">
         {vo2Monthly.length === 0 ? <EmptyState label="VO₂Max" /> : (
           <>

@@ -10,6 +10,8 @@ import Activity from './sections/Activity'
 import Fitness from './sections/Fitness'
 import Body from './sections/Body'
 import Summary from './sections/Summary'
+import Advanced from './sections/Advanced'
+import ExportActions from './ExportActions'
 
 const TABS = [
   { id: 'summary', label: '概览' },
@@ -18,6 +20,7 @@ const TABS = [
   { id: 'activity', label: '活动' },
   { id: 'fitness', label: '体能' },
   { id: 'body', label: '体重' },
+  { id: 'advanced', label: '进阶' },
 ]
 
 function KpiCard({ label, value, unit, rating, sub }) {
@@ -69,7 +72,10 @@ export default function Dashboard({ data, profile, onReset }) {
     <div className="max-w-5xl mx-auto px-4 pb-12">
       <div className="flex items-center justify-between py-4 border-b border-slate-800 mb-4">
         <h1 className="text-lg font-semibold">🍎 健康分析报告</h1>
-        <button onClick={onReset} className="text-slate-500 hover:text-slate-300 text-sm">重新上传</button>
+        <div className="flex items-center gap-3">
+          <ExportActions data={data} profile={profile} />
+          <button onClick={onReset} className="text-slate-500 hover:text-slate-300 text-sm">重新上传</button>
+        </div>
       </div>
 
       <div className="flex gap-1 mb-4 overflow-x-auto">
@@ -102,6 +108,7 @@ export default function Dashboard({ data, profile, onReset }) {
         {tab === 'activity'  && <Activity data={data} stepsByDay={stepsByDay} />}
         {tab === 'fitness'   && <Fitness data={data} profile={profile} />}
         {tab === 'body'      && <Body data={data} profile={profile} />}
+        {tab === 'advanced'  && <Advanced data={data} />}
       </div>
     </div>
   )
